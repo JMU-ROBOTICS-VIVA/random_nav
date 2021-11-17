@@ -31,7 +31,7 @@ from launch.actions import DeclareLaunchArgument
 
 
 def generate_launch_description():
-    use_sim_time = LaunchConfiguration('use_sim_time', default='True')
+    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
 
     tb_launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'launch')
     nav2_launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_navigation2'), 'launch')
@@ -39,25 +39,44 @@ def generate_launch_description():
     default_world_path = os.path.join(get_package_share_directory('random_nav'), 'worlds', 'room.world')
     default_map_path = os.path.join(get_package_share_directory('random_nav'), 'maps', 'room.yaml')
 
+    launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'launch')
+    pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
 
     return LaunchDescription([
         DeclareLaunchArgument('world', default_value=default_world_path),
         DeclareLaunchArgument('map', default_value=default_map_path),
 
         # START SIMULATOR
-        ExecuteProcess(
-            cmd=['gazebo', '--verbose', LaunchConfiguration('world'), '-s', 'libgazebo_ros_init.so'],
-            output='screen'),
+        #ExecuteProcess(
+        #    cmd=['gazebo', '--verbose', LaunchConfiguration('world'), '-s', 'libgazebo_ros_init.so'],
+        #    output='screen'),
+        #   
+        #ExecuteProcess(
+        #    cmd=['ros2', 'param', 'set', '/gazebo', 'use_sim_time', use_sim_time],
+        #    output='screen'),
+        #
+        #Node(
+        #    package="jmu_turtlebot3_bringup",
+        #    executable="tb_fixer",
+        #    name="tb_fixer",
+        #    output="screen",
+        #),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
+            ),
+            launch_arguments={'world': default_world_path}.items(),
+        ),
 
-        ExecuteProcess(
-            cmd=['ros2', 'param', 'set', '/gazebo', 'use_sim_time', use_sim_time],
-            output='screen'),
-        
-        Node(
-            package="jmu_turtlebot3_bringup",
-            node_executable="tb_fixer",
-            node_name="tb_fixer",
-            output="screen",
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
+            ),
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([launch_file_dir, '/robot_state_publisher.launch.py']),
+            launch_arguments={'use_sim_time': use_sim_time}.items(),
         ),
 
 

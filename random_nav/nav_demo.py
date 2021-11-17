@@ -31,7 +31,8 @@ class NavNode(rclpy.node.Node):
         self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
 
         # Create the action client and wait until it is active
-        self.ac = ActionClient(self, NavigateToPose, '/NavigateToPose')
+        #self.ac = ActionClient(self, NavigateToPose, '/NavigateToPose')
+        self.ac = ActionClient(self, NavigateToPose, '/navigate_to_pose')
         self.get_logger().info("WAITING FOR NAVIGATION SERVER...")
         self.ac.wait_for_server()
         self.get_logger().info("NAVIGATION SERVER AVAILABLE...")
