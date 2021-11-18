@@ -18,6 +18,8 @@ from rclpy.task import Future
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
 
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
+
 from nav_msgs.msg import OccupancyGrid
 from jmu_ros2_util import map_utils, transformations
 
@@ -29,7 +31,10 @@ class NavNode(rclpy.node.Node):
 
         #self.create_timer(.1, self.timer_callback)
 
-        self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
+        latching_qos = QoSProfile(depth=1,
+                durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+        self.create_subscription(OccupancyGrid, 'map', self.map_callback, 
+                qos_profile=latching_qos)
 
         # Create the action client and wait until it is active
         #self.ac = ActionClient(self, NavigateToPose, '/NavigateToPose')
