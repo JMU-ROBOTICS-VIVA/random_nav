@@ -13,6 +13,7 @@ import numpy as np
 import rclpy
 import rclpy.node
 from rclpy.action.client import ActionClient
+from rclpy.task import Future
 
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
@@ -26,16 +27,14 @@ class NavNode(rclpy.node.Node):
     def __init__(self, x, y, theta, timeout):
         super().__init__('nav_demo')
 
-        self.create_timer(.1, self.timer_callback)
+        #self.create_timer(.1, self.timer_callback)
 
         self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
 
         # Create the action client and wait until it is active
         #self.ac = ActionClient(self, NavigateToPose, '/NavigateToPose')
         self.ac = ActionClient(self, NavigateToPose, '/navigate_to_pose')
-        self.get_logger().info("WAITING FOR NAVIGATION SERVER...")
-        self.ac.wait_for_server()
-        self.get_logger().info("NAVIGATION SERVER AVAILABLE...")
+
 
         # Set up the goal message
         self.goal = NavigateToPose.Goal()
@@ -51,13 +50,22 @@ class NavNode(rclpy.node.Node):
 
         self.timeout = timeout
 
+    def send_goal(self):
+        self.get_logger().info("WAITING FOR NAVIGATION SERVER...")
+        self.ac.wait_for_server()
+        self.get_logger().info("NAVIGATION SERVER AVAILABLE...")
         self.get_logger().info("SENDING GOAL TO NAVIGATION SERVER...")
         self.start_time = time.time()
-        self.goal_future = self.ac.send_goal_async(self.goal)
 
         self.cancel_future = None
         self.is_done = False
         self.map = None
+        self.goal_future = self.ac.send_goal_async(self.goal)
+
+        self.create_timer(.1, self.timer_callback)
+        self.future_event = Future()
+
+        return self.future_event
 
     def map_callback(self, map_msg):
         """Process the map message.  This doesn't really do anything useful, it is
@@ -104,6 +112,7 @@ class NavNode(rclpy.node.Node):
             if self.cancel_future.done():
                 self.ac.destroy()
                 self.is_done = True
+                self.future_event.set_result(None)
 
         else:
 
@@ -111,16 +120,18 @@ class NavNode(rclpy.node.Node):
                 self.get_logger().info("NAVIGATION SERVER REPORTS SUCCESS. EXITING!")
                 self.ac.destroy()
                 self.is_done = True
+                self.future_event.set_result(None)
 
             if self.goal_future.result().status == GoalStatus.STATUS_ABORTED:
                 self.get_logger().info("NAVIGATION SERVER HAS ABORTED. EXITING!")
                 self.ac.destroy()
                 self.is_done = True
+                self.future_event.set_result(None)
 
             elif time.time() - self.start_time > self.timeout:
                 self.get_logger().info("TAKING TOO LONG. CANCELLING GOAL!")
                 self.cancel_future = self.goal_future.result().cancel_goal_async()
-
+                self.future_event.set_result(None)
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -136,8 +147,12 @@ def main():
     args = parser.parse_args()
 
     rclpy.init()
+
     node = NavNode(args.x, args.y, args.theta, args.timeout)
-    rclpy.spin_until_future_complete(node, node)
+
+    future = node.send_goal()
+
+    rclpy.spin_until_future_complete(node,future)
 
     node.destroy_node()
     rclpy.shutdown()

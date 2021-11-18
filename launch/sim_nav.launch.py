@@ -43,9 +43,7 @@ def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
 
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value=default_world_path),
         DeclareLaunchArgument('map', default_value=default_map_path),
-
         # START SIMULATOR
         #ExecuteProcess(
         #    cmd=['gazebo', '--verbose', LaunchConfiguration('world'), '-s', 'libgazebo_ros_init.so'],
@@ -77,12 +75,6 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([launch_file_dir, '/robot_state_publisher.launch.py']),
             launch_arguments={'use_sim_time': use_sim_time}.items(),
-        ),
-
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([tb_launch_file_dir, '/robot_state_publisher.launch.py']),
-            launch_arguments=[('use_sim_time', use_sim_time)],
         ),
 
         # START NAV SYSTEM
