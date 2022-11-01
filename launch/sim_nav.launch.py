@@ -44,21 +44,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('map', default_value=default_map_path),
-        # START SIMULATOR
-        #ExecuteProcess(
-        #    cmd=['gazebo', '--verbose', LaunchConfiguration('world'), '-s', 'libgazebo_ros_init.so'],
-        #    output='screen'),
-        #   
-        #ExecuteProcess(
-        #    cmd=['ros2', 'param', 'set', '/gazebo', 'use_sim_time', use_sim_time],
-        #    output='screen'),
-        #
-        #Node(
-        #    package="jmu_turtlebot3_bringup",
-        #    executable="tb_fixer",
-        #    name="tb_fixer",
-        #    output="screen",
-        #),
+
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
@@ -78,7 +64,7 @@ def generate_launch_description():
         ),
 
         # START NAV SYSTEM
-        
+
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([nav2_launch_file_dir, '/navigation2.launch.py']),
             launch_arguments=[
@@ -86,7 +72,7 @@ def generate_launch_description():
                 ('use_sim_time', use_sim_time)
             ],
         ),
-        
+
     ])
 
 if __name__ == "__main__":
