@@ -8,7 +8,7 @@ DO NOT MODIFY OR IMPORT THIS FILE.  It is only provided as an
 illustration.
 
 Author: Nathan Sprague and Kevin Molloy
-Version: 11/1/2022
+Version: 10/24/2023
 
 """
 import argparse
@@ -26,18 +26,19 @@ from action_msgs.msg import GoalStatus
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 
 from nav_msgs.msg import OccupancyGrid
-from jmu_ros2_util import map_utils, transformations
+from jmu_ros2_util import map_utils
+import tf_transformations
 
 
 def create_nav_goal(x, y, theta):
     goal = NavigateToPose.Goal()
 
-    goal.pose.header.frame_id = 'map'  # SEEMS TO BE IGNORED!
+    goal.pose.header.frame_id = 'map'
     goal.pose.pose.position.x = x
     goal.pose.pose.position.y = y
 
     # We need to convert theta to a quaternion....
-    quaternion = transformations.quaternion_from_euler(0, 0, theta, 'rxyz')
+    quaternion = tf_transformations.quaternion_from_euler(0, 0, theta, 'rxyz')
     goal.pose.pose.orientation.x = quaternion[0]
     goal.pose.pose.orientation.y = quaternion[1]
     goal.pose.pose.orientation.z = quaternion[2]
@@ -55,7 +56,7 @@ class NavNode(rclpy.node.Node):
         # published. Maps fall into this category.  They typically
         # don't change, so it makes sense to publish them once.
         latching_qos = QoSProfile(depth=1,
-                durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+                                  durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
 
         self.create_subscription(OccupancyGrid, 'map',
                                  self.map_callback,
@@ -119,7 +120,7 @@ class NavNode(rclpy.node.Node):
                 free = "free"
             else:
                 free = "unknown"
-            self.get_logger().info("HEY! Map position ({:.2f}, {:.2f}) is {}".format(x, y, free))
+            self.get_logger().info(f"HEY! Map position ({x:.2f}, {y:.2f}) is {free}")
 
     def timer_callback(self):
         """Periodically check in on the progress of navigation."""
