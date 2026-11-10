@@ -15,6 +15,9 @@ import argparse
 import time
 import numpy as np
 
+import sys
+from rclpy.utilities import remove_ros_args
+
 import rclpy
 import rclpy.node
 from rclpy.action.client import ActionClient
@@ -63,18 +66,21 @@ class NavNode(rclpy.node.Node):
                                  qos_profile=latching_qos)
 
         # Create the action client.
-        self.ac = ActionClient(self, NavigateToPose, '/navigate_to_pose')
+        self.ac = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
         self.goal = create_nav_goal(x, y, theta)
 
         # Used if we decide to cancel a goal request. None indicates
         # we haven't canceled.
         self.cancel_future = None
-        
+        self.free = None       
         self.map = None
         self.timeout = timeout
 
     def send_goal(self):
+        if self.free is not None and self.free != 'free':
+            return None
+
         self.get_logger().info("WAITING FOR NAVIGATION SERVER...")
         self.ac.wait_for_server()
         self.get_logger().info("NAVIGATION SERVER AVAILABLE...")
@@ -115,12 +121,12 @@ class NavNode(rclpy.node.Node):
             y = self.goal.pose.pose.position.y
             val = self.map.get_cell(x, y)
             if val == 100:
-                free = "occupied"
+                self.free = "occupied"
             elif val == 0:
-                free = "free"
+                self.free = "free"
             else:
-                free = "unknown"
-            self.get_logger().info(f"HEY! Map position ({x:.2f}, {y:.2f}) is {free}")
+                self.free = "unknown"
+            self.get_logger().info(f"HEY! Map position ({x:.2f}, {y:.2f}) is {self.free} and the value is:{val}")
 
     def timer_callback(self):
         """Periodically check in on the progress of navigation."""
@@ -150,6 +156,8 @@ class NavNode(rclpy.node.Node):
                 self.cancel_future = self.goal_future.result().cancel_goal_async()
 
 def main():
+    rclpy.init()
+    
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Navigate to a designated location.")
     parser.add_argument('x', default=0.0, type=float,
@@ -160,17 +168,17 @@ def main():
                         help='Orientation of goal')
     parser.add_argument('--timeout', default=float('inf'), type=float,
                         help='How long to wait before cancelling navigation.')
-    args = parser.parse_args()
+    args = parser.parse_args(remove_ros_args(args=sys.argv)[1:])
 
-    rclpy.init()
+
 
     node = NavNode(args.x, args.y, args.theta, args.timeout)
 
     future = node.send_goal()
 
-    rclpy.spin_until_future_complete(node, future)
-
-    node.get_logger().info("Node's future: " + str(future.result()))
+    if future is not None:
+       rclpy.spin_until_future_complete(node, future)
+       node.get_logger().info("Node's future: " + str(future.result()))
 
     node.destroy_node()
     rclpy.shutdown()
